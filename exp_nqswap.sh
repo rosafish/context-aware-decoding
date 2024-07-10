@@ -4,7 +4,8 @@ MAXCTXLEN="2038"
 GENLEN="10"
 FN_PREFIX="eval/nqswap_example_input/nqswap"
 
-for WEIGHT in "1_0" "2_-1"
+# for WEIGHT in "1_0" "2_-1"
+for WEIGHT in "1_0"
 do
     TOPP="0.0"
     TESTFILE="fin|${FN_PREFIX}_${WEIGHT}.jsonl"
