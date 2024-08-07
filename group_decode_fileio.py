@@ -71,6 +71,12 @@ def decode(args, batch_input_ids, dec_depth, model, tokenizer):
     batch_size = args.per_device_eval_batch_size
     assert batch_input_ids.size(1) == args.context_size
     assert args.decode_truncate_len >= 0
+
+    print('args.max_seq_length: ', args.max_seq_length)
+    print('args.context_size: ', args.context_size)
+    print('args.decode_truncate_len: ', args.decode_truncate_len)
+    print('dec_depth: ', dec_depth)
+
     assert (args.max_seq_length - args.context_size - args.decode_truncate_len) % dec_depth == 0
     unit_seq_len = int((args.max_seq_length - args.context_size - args.decode_truncate_len) / dec_depth)
     if args.context_size > 0:
@@ -94,6 +100,7 @@ def decode(args, batch_input_ids, dec_depth, model, tokenizer):
 
     for _i in range(dec_depth):
         if args.model_category == 'causal':
+            # print('unit_context_input_ids: ', unit_context_input_ids.size())
             model_inputs = model.prepare_inputs_for_generation(unit_context_input_ids, past_key_values=past_key_values)
             outputs = model(**model_inputs, output_hidden_states=False)
         elif args.model_category == 'seq2seq':
@@ -229,6 +236,14 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    import torch.distributed as dist
+
+    dist.init_process_group(
+        backend='nccl',
+        init_method='env://',
+        timeout=datetime.timedelta(minutes=20)  # Increase the timeout to 20 minutes
+    )
 
     accelerator = Accelerator(kwargs_handlers=[InitProcessGroupKwargs(timeout=datetime.timedelta(seconds=259200))])
     logging.basicConfig(
@@ -494,6 +509,7 @@ def main():
                 assert args.per_device_eval_batch_size == 1
 
                 input_ids = torch.LongTensor(tokenizer.encode(_fd[ctx_field_name], add_special_tokens=True)).unsqueeze(0).to(args.accelerator.device)
+                print('input_ids.size(1): ', input_ids.size(1))
                 args.context_size = input_ids.size(1)
                 args.decode_truncate_len = args.orig_decode_truncate_len - args.context_size # Han: this compensates for the unknown input context size
 
