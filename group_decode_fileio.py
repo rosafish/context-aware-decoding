@@ -488,6 +488,9 @@ def main():
 
     args.tokenizer = tokenizer
 
+    num_long_inputs = 0
+    long_inputs_index = []
+
     if args.train_mode == "decode":
         model.eval()
 
@@ -510,6 +513,12 @@ def main():
 
                 input_ids = torch.LongTensor(tokenizer.encode(_fd[ctx_field_name], add_special_tokens=True)).unsqueeze(0).to(args.accelerator.device)
                 print('input_ids.size(1): ', input_ids.size(1))
+                if input_ids.size(1) > args.orig_decode_truncate_len:
+                    # Rosa: this is a hack to handle very long examples
+                    input_ids = input_ids[:, :args.orig_decode_truncate_len]
+                    num_long_inputs += 1
+                    long_inputs_index.append(_fd['input_index'])
+                    
                 args.context_size = input_ids.size(1)
                 args.decode_truncate_len = args.orig_decode_truncate_len - args.context_size # Han: this compensates for the unknown input context size
 
@@ -518,7 +527,9 @@ def main():
                 if 'filter_p_prior' in _fd:
                     args.filter_top_p_prior = _fd['filter_p_prior']
 
+                print('args.decode_truncate_len: ', args.decode_truncate_len)
                 if args.decode_truncate_len < 0:
+                    print('hi, skipping')
                     continue # skipping very long examples
                 logger.info(f"idx: {_fd['input_index']}")
 
@@ -550,6 +561,9 @@ def main():
                 for export in export_list:
                     f_out.write(json.dumps(export))
                     f_out.write("\n")
+
+                f_out.write('num_long_inputs: ' + str(num_long_inputs) + '\n')
+                f_out.write('long_inputs_index: ' + str(long_inputs_index) + '\n')
 
 
 if __name__ == "__main__":
