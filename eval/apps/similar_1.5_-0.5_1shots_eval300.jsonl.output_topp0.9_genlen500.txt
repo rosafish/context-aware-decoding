@@ -1,0 +1,2 @@
+num_long_inputs: 7
+long_inputs_index: [262, 2655, 3893, 3268, 4820, 2706, 1569]
